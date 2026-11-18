@@ -1,17 +1,19 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "scrapy-lightpanda"
+name = "scrapy-lightpanda-middleware"
 version = "0.1.0"
 description = "Opt-in Lightpanda downloader middleware for Scrapy"
 readme = "README.md"
 requires-python = ">=3.10"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
 dependencies = ["Scrapy>=2.11,<3", "lightpanda-py"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "build>=1.2", "twine>=6.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

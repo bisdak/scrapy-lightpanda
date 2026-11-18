@@ -1,15 +1,23 @@
 # scrapy-lightpanda
 
+[![CI](https://github.com/bisdak/scrapy-lightpanda/actions/workflows/ci.yml/badge.svg)](https://github.com/bisdak/scrapy-lightpanda/actions/workflows/ci.yml)
+
 An opt-in Scrapy downloader middleware that renders selected GET requests with [Lightpanda](https://github.com/lightpanda-io/browser) via [`lightpanda-py`](https://github.com/tclesius/lightpanda-py). Unmarked requests continue through Scrapy's normal downloader.
 
 ## Install
 
-From this project directory:
+After publication, install the package with:
+
+```bash
+python -m pip install scrapy-lightpanda-middleware
+```
+
+For development from this repository:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-python -m pip install -e .
+python -m pip install -e '.[dev]'
 ```
 
 `lightpanda-py` bundles the Lightpanda executable for supported platforms.
@@ -74,3 +82,19 @@ scrapy runspider examples/quotes_spider.py
 ```
 
 Run it from this project directory after installation. It requires network access to the demo site.
+
+## Releases
+
+The PyPI distribution is named `scrapy-lightpanda-middleware` (the Python import remains `scrapy_lightpanda`). Releases use PyPI Trusted Publishing; no PyPI API token is stored in GitHub.
+
+Before the first release, configure a PyPI pending Trusted Publisher for:
+
+- PyPI project: `scrapy-lightpanda-middleware`
+- GitHub owner: `bisdak`
+- Repository: `scrapy-lightpanda`
+- Workflow filename: `publish.yml` (the file is `.github/workflows/publish.yml`)
+- GitHub environment: `pypi`
+
+Create the `pypi` environment in GitHub repository settings with a required reviewer and deployment tags restricted to `v*`; enable prevention of self-review and disallow administrator bypass where the repository plan permits. Protect changes to the release workflow with required PR review/branch protection. These controls matter because PyPI trusts the configured workflow identity and environment, not the workflow's event trigger.
+
+Once the pending publisher and environment protections are configured and CI is green, publish a GitHub Release tagged `v0.1.0` to upload the first release. The release workflow verifies the tag matches `pyproject.toml` and publishes only after the full test matrix, wheel/sdist checks, and tests against the extracted source distribution pass. The shorter PyPI name `scrapy-lightpanda` belongs to a separate, unrelated project and must not be used.
