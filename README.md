@@ -85,16 +85,6 @@ Run it from this project directory after installation. It requires network acces
 
 ## Releases
 
-The PyPI distribution is named `scrapy-lightpanda-middleware` (the Python import remains `scrapy_lightpanda`). Releases use PyPI Trusted Publishing; no PyPI API token is stored in GitHub.
+The PyPI distribution is [`scrapy-lightpanda-middleware`](https://pypi.org/project/scrapy-lightpanda-middleware/) (the Python import remains `scrapy_lightpanda`). Releases are published from GitHub Releases through PyPI Trusted Publishing; no PyPI API token is stored in GitHub.
 
-Before the first release, configure a PyPI pending Trusted Publisher for:
-
-- PyPI project: `scrapy-lightpanda-middleware`
-- GitHub owner: `bisdak`
-- Repository: `scrapy-lightpanda`
-- Workflow filename: `publish.yml` (the file is `.github/workflows/publish.yml`)
-- GitHub environment: `pypi`
-
-Create the `pypi` environment in GitHub repository settings with a required reviewer and deployment tags restricted to `v*`; enable prevention of self-review and disallow administrator bypass where the repository plan permits. Protect changes to the release workflow with required PR review/branch protection. These controls matter because PyPI trusts the configured workflow identity and environment, not the workflow's event trigger.
-
-Once the pending publisher and environment protections are configured and CI is green, publish a GitHub Release tagged `v0.1.0` to upload the first release. The release workflow verifies the tag matches `pyproject.toml` and publishes only after the full test matrix, wheel/sdist checks, and tests against the extracted source distribution pass. The shorter PyPI name `scrapy-lightpanda` belongs to a separate, unrelated project and must not be used.
+To publish a release, update the project version, then publish a GitHub Release using the matching `v<version>` tag (for example, `v0.1.1`). The workflow runs the test matrix, builds and validates the wheel and source distribution, checks the tag against `pyproject.toml`, and publishes the distributions to PyPI.
