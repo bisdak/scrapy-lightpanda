@@ -6,7 +6,7 @@ An opt-in Scrapy downloader middleware that renders selected GET requests with [
 
 ## Install
 
-After publication, install the package with:
+Install the package from PyPI:
 
 ```bash
 python -m pip install scrapy-lightpanda-middleware
