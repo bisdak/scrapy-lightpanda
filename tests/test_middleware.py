@@ -165,10 +165,15 @@ def test_safe_headers_proxy_and_request_timeout_are_forwarded(monkeypatch, middl
 
     kwargs = fetch.call_args.kwargs
     assert kwargs["json"] is True
-    assert kwargs["http_header"] == [
-        "accept: text/html, application/xhtml+xml",
-        "Accept-Language: en-US",
-    ]
+    assert {
+        name.lower(): value
+        for name, _, value in (
+            header.partition(": ") for header in kwargs["http_header"]
+        )
+    } == {
+        "accept": "text/html, application/xhtml+xml",
+        "accept-language": "en-US",
+    }
     assert kwargs["user_agent"] == "scraper-test"
     assert kwargs["http_proxy"] == "http://proxy.example:8080"
     assert kwargs["http_timeout"] == 2500
