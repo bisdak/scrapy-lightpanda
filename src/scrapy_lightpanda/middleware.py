@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import base64
 import binascii
 import math
@@ -14,6 +13,8 @@ import lightpanda
 from scrapy import Request, Spider
 from scrapy.exceptions import NotSupported
 from scrapy.http import Headers, HtmlResponse, Response
+from scrapy.utils.defer import maybe_deferred_to_future
+from twisted.internet.threads import deferToThread
 from twisted.internet.error import TimeoutError as TwistedTimeoutError
 
 try:
@@ -85,7 +86,9 @@ class LightpandaMiddleware:
             proxy = self._proxy_with_authorization(proxy, proxy_authorization)
         self._validate_proxy_environment(request.url, proxy)
         request.meta["dont_cache"] = True
-        return await asyncio.to_thread(self._fetch_response, request, proxy)
+        return await maybe_deferred_to_future(
+            deferToThread(self._fetch_response, request, proxy)
+        )
 
     @classmethod
     def _validate_proxy_environment(cls, url: str, proxy: str | None) -> None:

@@ -26,8 +26,17 @@ def test_middleware_module_is_available():
     assert middleware is not None, "Lightpanda middleware has not been implemented"
 
 
-async def run_inline(function, *args, **kwargs):
+def run_inline(function, *args, **kwargs):
     return function(*args, **kwargs)
+
+
+async def await_result(result):
+    return result
+
+
+def patch_thread_offload(monkeypatch, middleware, offload):
+    monkeypatch.setattr(middleware, "deferToThread", offload)
+    monkeypatch.setattr(middleware, "maybe_deferred_to_future", await_result)
 
 
 def run_request(middleware_instance, request):
@@ -68,7 +77,7 @@ def test_opted_in_request_fetches_in_worker_and_returns_html_response(monkeypatc
     fetch = Mock(return_value=response_result(payload))
     offload = Mock(side_effect=run_inline)
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", offload)
+    patch_thread_offload(monkeypatch, middleware, offload)
     mw = middleware.LightpandaMiddleware()
     request = Request(
         "https://example.com/page",
@@ -103,7 +112,7 @@ def test_optional_response_fields_default_and_html_is_utf8(monkeypatch, content,
     middleware = middleware_module
     fetch = Mock(return_value=response_result({"content": content}))
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", run_inline)
+    patch_thread_offload(monkeypatch, middleware, run_inline)
     request = Request("https://example.com", meta={"lightpanda": True})
     responses = []
 
@@ -131,7 +140,7 @@ def test_fetch_exception_propagates_from_async_middleware(monkeypatch, middlewar
     middleware = middleware_module
     fetch = Mock(side_effect=RuntimeError("browser failed"))
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", run_inline)
+    patch_thread_offload(monkeypatch, middleware, run_inline)
     request = Request("https://example.com", meta={"lightpanda": True})
 
     with pytest.raises(RuntimeError, match="browser failed"):
@@ -142,7 +151,7 @@ def test_safe_headers_proxy_and_request_timeout_are_forwarded(monkeypatch, middl
     middleware = middleware_module
     fetch = Mock(return_value=response_result({"content": "ok"}))
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", run_inline)
+    patch_thread_offload(monkeypatch, middleware, run_inline)
     request = Request(
         "https://example.com",
         headers={
@@ -183,7 +192,7 @@ def test_sensitive_origin_headers_are_rejected_even_with_opt_in(monkeypatch, mid
     middleware = middleware_module
     fetch = Mock(return_value=response_result({"content": "ok"}))
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", run_inline)
+    patch_thread_offload(monkeypatch, middleware, run_inline)
     request = Request(
         "https://example.com",
         headers={
@@ -210,7 +219,7 @@ def test_credentialed_proxy_requires_sensitive_opt_in(monkeypatch, middleware_mo
     fetch = Mock(return_value=response_result({"content": "ok"}))
     offload = Mock(side_effect=run_inline)
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", offload)
+    patch_thread_offload(monkeypatch, middleware, offload)
     request = Request(
         "https://example.com",
         meta={"lightpanda": True, "proxy": "http://user:password@proxy.example:8080"},
@@ -228,7 +237,7 @@ def test_scrapy_proxy_authorization_requires_sensitive_opt_in(monkeypatch, middl
     fetch = Mock(return_value=response_result({"content": "ok"}))
     offload = Mock(side_effect=run_inline)
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", offload)
+    patch_thread_offload(monkeypatch, middleware, offload)
     request = Request(
         "https://example.com",
         headers={b"Proxy-Authorization": b"Basic dXNlcjpwYXNzd29yZA=="},
@@ -247,7 +256,7 @@ def test_crawler_download_timeout_is_used_when_request_has_no_override(
     middleware = middleware_module
     fetch = Mock(return_value=response_result({"content": "ok"}))
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", run_inline)
+    patch_thread_offload(monkeypatch, middleware, run_inline)
     request = Request("https://example.com", meta={"lightpanda": True})
 
     run_request(middleware_with_timeout(middleware, 6.75), request)
@@ -259,7 +268,7 @@ def test_positive_submillisecond_timeout_rounds_up(monkeypatch, middleware_modul
     middleware = middleware_module
     fetch = Mock(return_value=response_result({"content": "ok"}))
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", run_inline)
+    patch_thread_offload(monkeypatch, middleware, run_inline)
     request = Request(
         "https://example.com",
         meta={"lightpanda": True, "download_timeout": 0.0005},
@@ -275,7 +284,7 @@ def test_non_ascii_forwarded_header_is_rejected(monkeypatch, middleware_module):
     fetch = Mock()
     offload = Mock(side_effect=run_inline)
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", offload)
+    patch_thread_offload(monkeypatch, middleware, offload)
     request = Request(
         "https://example.com",
         headers={b"Accept": "café".encode("utf-8")},
@@ -308,7 +317,7 @@ def test_lightpanda_headers_and_final_url_are_converted(monkeypatch, middleware_
         )
     )
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", run_inline)
+    patch_thread_offload(monkeypatch, middleware, run_inline)
     request = Request("https://example.com/old", meta={"lightpanda": True})
 
     response = run_request(middleware.LightpandaMiddleware(), request)
@@ -325,7 +334,7 @@ def test_zero_http_status_becomes_retryable_download_timeout(monkeypatch, middle
     middleware = middleware_module
     fetch = Mock(return_value=response_result({"content": "", "http_status": 0}))
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", run_inline)
+    patch_thread_offload(monkeypatch, middleware, run_inline)
     request = Request("https://example.com", meta={"lightpanda": True})
 
     with pytest.raises(middleware.DownloadTimeoutError):
@@ -338,7 +347,7 @@ def test_lightpanda_network_timeout_is_mapped_to_scrapy_retry_exception(
     middleware = middleware_module
     fetch = Mock(side_effect=middleware.lightpanda.Error('err="OperationTimedout"', 1))
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", run_inline)
+    patch_thread_offload(monkeypatch, middleware, run_inline)
     request = Request("https://example.com", meta={"lightpanda": True})
 
     with pytest.raises(middleware.DownloadTimeoutError, match="Lightpanda request timed out"):
@@ -349,7 +358,7 @@ def test_missing_http_status_becomes_retryable_download_timeout(monkeypatch, mid
     middleware = middleware_module
     fetch = Mock(return_value=response_result({"content": "" , "http_status": None}))
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", run_inline)
+    patch_thread_offload(monkeypatch, middleware, run_inline)
     request = Request("https://example.com", meta={"lightpanda": True})
 
     with pytest.raises(middleware.DownloadTimeoutError):
@@ -362,7 +371,7 @@ def test_proxy_environment_conflict_fails_closed(monkeypatch, middleware_module)
     fetch = Mock()
     offload = Mock(side_effect=run_inline)
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", offload)
+    patch_thread_offload(monkeypatch, middleware, offload)
     request = Request(
         "https://example.com",
         meta={"lightpanda": True, "proxy": None},
@@ -383,7 +392,7 @@ def test_no_proxy_cannot_silently_bypass_explicit_scrapy_proxy(
     fetch = Mock()
     offload = Mock(side_effect=run_inline)
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", offload)
+    patch_thread_offload(monkeypatch, middleware, offload)
     request = Request(
         "https://example.com",
         meta={"lightpanda": True, "proxy": "http://scrapy-proxy.example:8080"},
@@ -400,7 +409,7 @@ def test_credentialed_proxy_basic_bytes_support_latin1(monkeypatch, middleware_m
     middleware = middleware_module
     fetch = Mock(return_value=response_result({"content": "ok"}))
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", run_inline)
+    patch_thread_offload(monkeypatch, middleware, run_inline)
     credentials = "usér:päss".encode("latin-1")
     auth = b"Basic " + base64.b64encode(credentials)
     request = Request(
@@ -423,7 +432,7 @@ def test_credentialed_proxy_errors_do_not_expose_credentials(monkeypatch, middle
     secret_proxy = "http://user:topsecret@proxy.example:8080"
     fetch = Mock(side_effect=RuntimeError(f"failed command: --http-proxy {secret_proxy}"))
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", run_inline)
+    patch_thread_offload(monkeypatch, middleware, run_inline)
     request = Request(
         "https://example.com",
         meta={
@@ -443,7 +452,7 @@ def test_lightpanda_request_is_not_cached(monkeypatch, middleware_module):
     middleware = middleware_module
     fetch = Mock(return_value=response_result({"content": "ok"}))
     monkeypatch.setattr(middleware.lightpanda, "fetch", fetch)
-    monkeypatch.setattr(middleware.asyncio, "to_thread", run_inline)
+    patch_thread_offload(monkeypatch, middleware, run_inline)
     request = Request("https://example.com", meta={"lightpanda": True})
 
     run_request(middleware.LightpandaMiddleware(), request)
